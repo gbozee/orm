@@ -253,6 +253,16 @@ class Model(typesystem.Schema, metaclass=ModelMetaclass):
     def pk(self, value):
         setattr(self, self.__pkname__, value)
 
+    async def save(self):
+        kwargs = {key: getattr(self, key) for key in self.fields.keys()}
+        if kwargs[self.__pkname__]:
+            await self.update(**kwargs)
+            return self
+        result = await self.objects.create(**kwargs)
+        for key in kwargs.keys():
+            setattr(self, key, getattr(result, key))
+        return self
+
     async def update(self, **kwargs):
         # Validate the keyword arguments.
         fields = {key: field for key, field in self.fields.items() if key in kwargs}
