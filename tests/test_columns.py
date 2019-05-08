@@ -103,15 +103,18 @@ async def test_auto_update():
         assert result.created != result.modified
         assert result.value == 2.3
 
+
 @async_adapter
 async def test_save():
     async with database:
         new_todo = Todo()
         new_todo.value = 2.3
         await new_todo.save()
-        
+
         assert new_todo.pk is not None
         assert new_todo.created == new_todo.modified
         assert new_todo.value == 2.3
+        new_todo.value = 4.8
         await new_todo.save()
         assert new_todo.created != new_todo.modified
+        assert new_todo.value == 4.8
