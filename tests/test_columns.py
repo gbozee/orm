@@ -33,6 +33,20 @@ class Example(orm.Model):
     data = orm.JSON(default={})
 
 
+class Todo(orm.Model):
+    __tablename__ = "todo"
+    __metadata__ = metadata
+    __database__ = database
+    id = orm.Integer(primary_key=True)
+    created = orm.DateTime(default=datetime.datetime.now)
+    modified = orm.DateTime(
+        default=datetime.datetime.now, onupdate=datetime.datetime.now
+    )
+    description = orm.Text(allow_blank=True)
+    value = orm.Float(allow_null=True)
+    data = orm.JSON(default={})
+
+
 @pytest.fixture(autouse=True, scope="module")
 def create_test_database():
     engine = sqlalchemy.create_engine(DATABASE_URL)
@@ -63,7 +77,7 @@ async def test_model_crud():
         example = await Example.objects.get()
         assert example.created.year == datetime.datetime.now().year
         assert example.created_day == datetime.date.today()
-        assert example.description == ''
+        assert example.description == ""
         assert example.value is None
         assert example.data == {}
 
@@ -71,3 +85,20 @@ async def test_model_crud():
         example = await Example.objects.get()
         assert example.value == 123.456
         assert example.data == {"foo": 123}
+
+
+class NewDateTime(datetime.datetime):
+    @classmethod
+    def now(cls):
+        return datetime.datetime(2019, 5, 8, 10, 37, 10, 982945)
+
+
+@async_adapter
+async def test_auto_update():
+    # monkeypatch.setattr(datetime, "datetime", NewDateTime)
+    async with database:
+        result = await Todo.objects.create()
+        assert result.created == result.modified
+        await result.update(value=2.3)
+        assert result.created != result.modified
+        assert result.value == 2.3

@@ -22,6 +22,7 @@ class ModelField:
     def get_column(self, name: str) -> sqlalchemy.Column:
         column_type = self.get_column_type()
         allow_null = getattr(self, "allow_null", False)
+        has_onupdate = getattr(self, "onupdate", None)
         constraints = self.get_constraints()
         return sqlalchemy.Column(
             name,
@@ -31,6 +32,7 @@ class ModelField:
             nullable=allow_null and not self.primary_key,
             index=self.index,
             unique=self.unique,
+            onupdate=has_onupdate,
         )
 
     def get_column_type(self) -> sqlalchemy.types.TypeEngine:

@@ -10,6 +10,7 @@ from setuptools import setup
 PACKAGE = "orm"
 URL = "https://github.com/encode/orm"
 
+
 def get_version(package):
     """
     Return package version as listed in `__version__` in `init.py`.
@@ -50,7 +51,11 @@ setup(
     packages=get_packages(PACKAGE),
     package_data={PACKAGE: ["py.typed"]},
     data_files=[("", ["LICENSE.md"])],
-    install_requires=["databases>=0.2.1", "typesystem"],
+    install_requires=[
+        "databases>=0.2.1",
+        "typesystem @ git+https://github.com/gbozee/typesystem.git@master"
+        # "typesystem"
+    ],
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Environment :: Web Environment",
