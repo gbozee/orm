@@ -2,14 +2,13 @@ import asyncio
 import datetime
 import functools
 
+import databases
 import pytest
 import sqlalchemy
 
-import databases
 import orm
-
 from tests.settings import DATABASE_URL
-
+from orm.utils import async_adapter
 
 database = databases.Database(DATABASE_URL, force_rollback=True)
 metadata = sqlalchemy.MetaData()
@@ -53,20 +52,6 @@ def create_test_database():
     metadata.create_all(engine)
     yield
     metadata.drop_all(engine)
-
-
-def async_adapter(wrapped_func):
-    """
-    Decorator used to run async test cases.
-    """
-
-    @functools.wraps(wrapped_func)
-    def run_sync(*args, **kwargs):
-        loop = asyncio.get_event_loop()
-        task = wrapped_func(*args, **kwargs)
-        return loop.run_until_complete(task)
-
-    return run_sync
 
 
 @async_adapter
@@ -118,3 +103,12 @@ async def test_save():
         await new_todo.save()
         assert new_todo.created != new_todo.modified
         assert new_todo.value == 4.8
+
+@async_adapter
+async def test_initialize_fields_from_constructor_and_save():
+    async with database:
+        new_todo = Todo(value=2.3)
+        await new_todo.save()
+        assert new_todo.pk is not None 
+        assert new_todo.created == new_todo.modified
+        assert new_todo.data == {}
