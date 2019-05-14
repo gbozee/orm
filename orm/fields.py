@@ -95,9 +95,10 @@ class JSON(ModelField, typesystem.Any):
 
 
 class ForeignKey(ModelField, typesystem.Field):
-    def __init__(self, to, allow_null: bool = False):
+    def __init__(self, to, allow_null: bool = False, related_name=None):
         super().__init__(allow_null=allow_null)
         self.to = to
+        self.related_name = related_name
 
     def validate(self, value, strict=False):
         return value.pk

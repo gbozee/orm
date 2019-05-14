@@ -109,7 +109,10 @@ async def test_save():
 async def test_initialize_fields_from_constructor_and_save():
     async with database:
         new_todo = Todo(value=2.3)
+        time2 = datetime.datetime.now()
+        new_todo.created = time2
         await new_todo.save()
         assert new_todo.pk is not None 
         assert new_todo.created == new_todo.modified
         assert new_todo.data == {}
+        assert new_todo.created == time2

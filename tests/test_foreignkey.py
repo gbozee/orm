@@ -50,6 +50,7 @@ class Team(orm.Model):
     id = orm.Integer(primary_key=True)
     org = orm.ForeignKey(Organisation)
     name = orm.String(max_length=100)
+    # members = orm.relationship()
 
 
 class Member(orm.Model):
@@ -172,3 +173,18 @@ async def test_multiple_fk():
         assert len(members) == 4
         for member in members:
             assert member.team.org.ident == "ACME Ltd"
+
+# @async_adapter
+# async def test_inverse_relationship():
+#     async with database:
+#         acme = await Organisation.objects.create(ident="ACME Ltd")
+#         red_team = await Team.objects.create(org=acme, name="Red Team")
+#         blue_team = await Team.objects.create(org=acme, name="Blue Team")
+#         await Member.objects.create(team=red_team, email="a@example.org")
+#         await Member.objects.create(team=red_team, email="b@example.org")
+#         await Member.objects.create(team=blue_team, email="c@example.org")
+#         await Member.objects.create(team=blue_team, email="d@example.org")
+#         blue_team_members = await blue_team.members.all()
+#         red_team_members = await red_team.members.all()
+#         assert len(blue_team_members) == 2
+#         assert len(red_team_members) == 2
