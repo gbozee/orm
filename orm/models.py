@@ -232,6 +232,8 @@ class QuerySet:
         # Execute the insert, and return a new model instance.
         instance = self.model_cls(kwargs)
         instance.pk = await self.database.execute(expr)
+        if kwargs.get("id"):
+            instance.pk = kwargs["id"]
         return instance
 
 
@@ -253,11 +255,12 @@ class Model(typesystem.Schema, metaclass=ModelMetaclass):
     def pk(self, value):
         setattr(self, self.__pkname__, value)
 
-    async def save(self):
+    async def save(self, create=False):
         kwargs = {key: getattr(self, key) for key in self.fields.keys()}
         if kwargs[self.__pkname__]:
             await self.update(**kwargs)
-            return self
+            if not create:
+                return self
         result = await self.objects.create(**kwargs)
         for key in kwargs.keys():
             setattr(self, key, getattr(result, key))
