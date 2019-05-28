@@ -1,6 +1,7 @@
 import typing
 
 import sqlalchemy
+
 import typesystem
 
 
@@ -10,11 +11,13 @@ class ModelField:
         primary_key: bool = False,
         index: bool = False,
         unique: bool = False,
+        autoincrement: bool = True,
         **kwargs: typing.Any,
     ) -> None:
         if primary_key:
             kwargs["allow_null"] = True
         super().__init__(**kwargs)  # type: ignore
+        self.autoincrement = autoincrement
         self.primary_key = primary_key
         self.index = index
         self.unique = unique
@@ -24,6 +27,10 @@ class ModelField:
         allow_null = getattr(self, "allow_null", False)
         has_onupdate = getattr(self, "onupdate", None)
         constraints = self.get_constraints()
+        kwargs = {}
+        if isinstance(column_type, sqlalchemy.Integer):
+            if self.primary_key:
+                kwargs["autoincrement"] = self.autoincrement
         return sqlalchemy.Column(
             name,
             column_type,
@@ -33,6 +40,7 @@ class ModelField:
             index=self.index,
             unique=self.unique,
             onupdate=has_onupdate,
+            **kwargs,
         )
 
     def get_column_type(self) -> sqlalchemy.types.TypeEngine:

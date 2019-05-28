@@ -227,8 +227,12 @@ class QuerySet:
 
         # Build the insert expression.
         expr = self.table.insert()
-        expr = expr.values(**kwargs)
+        # import ipdb
 
+        # ipdb.set_trace()
+        if not kwargs.get("id"):
+            kwargs.pop("id", None)
+        expr = expr.values(**kwargs)
         # Execute the insert, and return a new model instance.
         instance = self.model_cls(kwargs)
         instance.pk = await self.database.execute(expr)
