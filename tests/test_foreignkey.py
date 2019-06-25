@@ -174,17 +174,14 @@ async def test_multiple_fk():
         for member in members:
             assert member.team.org.ident == "ACME Ltd"
 
-# @async_adapter
-# async def test_inverse_relationship():
-#     async with database:
-#         acme = await Organisation.objects.create(ident="ACME Ltd")
-#         red_team = await Team.objects.create(org=acme, name="Red Team")
-#         blue_team = await Team.objects.create(org=acme, name="Blue Team")
-#         await Member.objects.create(team=red_team, email="a@example.org")
-#         await Member.objects.create(team=red_team, email="b@example.org")
-#         await Member.objects.create(team=blue_team, email="c@example.org")
-#         await Member.objects.create(team=blue_team, email="d@example.org")
-#         blue_team_members = await blue_team.members.all()
-#         red_team_members = await red_team.members.all()
-#         assert len(blue_team_members) == 2
-#         assert len(red_team_members) == 2
+
+@async_adapter
+async def test_delete_with_fk_filter():
+    fantasies = await Album.objects.create(name="Fantasies")
+    await Track.objects.create(album=fantasies, title="Help I'm Alive", position=1)
+    await Track.objects.create(album=fantasies, title="Sick Muse", position=2)
+    await Track.objects.create(album=fantasies, title="Satellite Mind", position=3)
+
+    assert await Track.objects.filter(album=fantasies).count() == 3
+    await Track.objects.filter(album__name="Fantasies").delete()
+    assert await Track.objects.filter(album=fantasies).count() == 0

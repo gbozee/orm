@@ -96,6 +96,33 @@ class QuerySet:
 
         return expr
 
+    def build_delete_expression(self):
+        assert self.filter_clauses, "Can't call delete before filter"
+        assert not self.limit_count, "Can't use delete with limit and offset"
+        primary_column = getattr(self.table.c, self.model_cls.__pkname__)
+        select_from = self.table
+
+        for item in self._select_related:
+            model_cls = self.model_cls
+            select_from = self.table
+            for part in item.split("__"):
+                model_cls = model_cls.fields[part].to
+                select_from = sqlalchemy.sql.join(select_from, model_cls.__table__)
+
+        expr = sqlalchemy.sql.select([primary_column])
+        expr = expr.select_from(select_from)
+
+        if self.filter_clauses:
+            if len(self.filter_clauses) == 1:
+                clause = self.filter_clauses[0]
+            else:
+                clause = sqlalchemy.sql.and_(*self.filter_clauses)
+            expr = expr.where(clause)
+
+        where_clause = primary_column.in_(expr)
+        expr = sqlalchemy.sql.delete(self.table).where(where_clause)
+        return expr
+
     def filter(self, **kwargs):
         filter_clauses = self.filter_clauses
         select_related = list(self._select_related)
@@ -273,14 +300,20 @@ class QuerySet:
         results = await self.database.execute_many(self.table.insert(), models_as_dicts)
         return len(models_as_dicts), True
 
-    async def delete(self, **kwargs):
-        results = await self.all(**kwargs)
-        if len(results) > 0:
-            ids = [x.id for x in results]
-            pk_column = getattr(self.table.c, results[0].__pkname__)
-            expr = self.table.delete().where(pk_column.in_(ids))
-            await self.database.execute(expr)
+    # async def delete(self, **kwargs):
+    #     results = await self.all(**kwargs)
+    #     if len(results) > 0:
+    #         ids = [x.id for x in results]
+    #         pk_column = getattr(self.table.c, results[0].__pkname__)
+    #         expr = self.table.delete().where(pk_column.in_(ids))
+    #         await self.database.execute(expr)
         # expr = self.__table__.delete().where(pk_column == self.pk)
+    async def delete(self, **kwargs):
+        if kwargs:
+            return await self.filter(**kwargs).delete()
+
+        expr = self.build_delete_expression()
+        return await self.database.execute(expr)
 
 
 class Model(typesystem.Schema, metaclass=ModelMetaclass):
