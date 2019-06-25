@@ -189,4 +189,46 @@ async def test_model_limit_with_filter():
         await User.objects.create(name="Tom")
         await User.objects.create(name="Tom")
 
-        assert len(await User.objects.limit(2).filter(name__iexact='Tom').all()) == 2
+        assert len(await User.objects.limit(2).filter(name__iexact="Tom").all()) == 2
+
+
+@async_adapter
+async def test_model_first():
+    async with database:
+        await User.objects.create(name="Tom")
+        await User.objects.create(name="James")
+        await User.objects.create(name="Jim")
+        item = await User.objects.first()
+        assert item.name == "Tom"
+
+
+@async_adapter
+async def test_model_last():
+    async with database:
+        await User.objects.create(name="Tom")
+        await User.objects.create(name="James")
+        await User.objects.create(name="Jim")
+        item = await User.objects.last()
+        assert item.name == "Jim"
+
+
+@async_adapter
+async def test_model_bulk_create():
+    async with database:
+        tom = User(name="Tom")
+        james = User(name="James")
+        jim = User(name="Jim")
+        result = await User.objects.bulk_create([tom, james, jim])
+        assert result == (3, True)
+        assert await User.objects.count() == 3
+
+
+@async_adapter 
+async def test_model_bulk_delete():
+    async with database:
+        await User.objects.create(name="Tom")
+        await User.objects.create(name="James")
+        await User.objects.create(name="Jim")
+        assert len(await User.objects.all()) == 3
+        await User.objects.filter(name__iexact="Tom").delete()
+        assert len(await User.objects.all()) == 2

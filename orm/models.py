@@ -1,5 +1,5 @@
 import typing
-
+import databases
 import sqlalchemy
 import typesystem
 from typesystem.schemas import SchemaMetaclass
@@ -62,7 +62,7 @@ class QuerySet:
         return self.__class__(model_cls=owner)
 
     @property
-    def database(self):
+    def database(self) -> databases.Database:
         return self.model_cls.__database__
 
     @property
@@ -216,22 +216,29 @@ class QuerySet:
             raise MultipleMatches()
         return self.model_cls.from_row(rows[0], select_related=self._select_related)
 
-    async def create(self, **kwargs):
-        # Validate the keyword arguments.
+    def validate_model(self, model):
         fields = self.model_cls.fields
         required = [key for key, value in fields.items() if not value.has_default()]
         validator = typesystem.Object(
             properties=fields, required=required, additional_properties=False
         )
-        kwargs = validator.validate(kwargs)
+        kwargs = validator.validate(model)
+        if not kwargs.get("id"):
+            kwargs.pop("id", None)
+        return kwargs
+
+    async def create(self, **kwargs):
+        # Validate the keyword arguments.
+        kwargs = self.validate_model(kwargs)
+        # fields = self.model_cls.fields
+        # required = [key for key, value in fields.items() if not value.has_default()]
+        # validator = typesystem.Object(
+        #     properties=fields, required=required, additional_properties=False
+        # )
+        # kwargs = validator.validate(kwargs)
 
         # Build the insert expression.
         expr = self.table.insert()
-        # import ipdb
-
-        # ipdb.set_trace()
-        if not kwargs.get("id"):
-            kwargs.pop("id", None)
         expr = expr.values(**kwargs)
         # Execute the insert, and return a new model instance.
         instance = self.model_cls(kwargs)
@@ -239,6 +246,41 @@ class QuerySet:
         if kwargs.get("id"):
             instance.pk = kwargs["id"]
         return instance
+
+    async def first(self, field="id"):
+        expr = self.build_select_expression()
+        key = getattr(self.table.c, field)
+        expr = expr.order_by(key.asc())
+        row = await self.database.fetch_one(expr)
+        if not row:
+            raise NoMatch()
+        return self.model_cls.from_row(row, select_related=self._select_related)
+
+    async def last(self, field="id"):
+        expr = self.build_select_expression()
+        key = getattr(self.table.c, field)
+        expr = expr.order_by(key.desc())
+        row = await self.database.fetch_one(expr)
+        if not row:
+            raise NoMatch()
+        return self.model_cls.from_row(row, select_related=self._select_related)
+
+    async def bulk_create(self, models_as_list):
+        get_kwargs = lambda x: {key: getattr(x, key) for key in x.fields.keys()}
+        kwargs = [get_kwargs(s) for s in models_as_list]
+
+        models_as_dicts = [self.validate_model(k) for k in kwargs]
+        results = await self.database.execute_many(self.table.insert(), models_as_dicts)
+        return len(models_as_dicts), True
+
+    async def delete(self, **kwargs):
+        results = await self.all(**kwargs)
+        if len(results) > 0:
+            ids = [x.id for x in results]
+            pk_column = getattr(self.table.c, results[0].__pkname__)
+            expr = self.table.delete().where(pk_column.in_(ids))
+            await self.database.execute(expr)
+        # expr = self.__table__.delete().where(pk_column == self.pk)
 
 
 class Model(typesystem.Schema, metaclass=ModelMetaclass):

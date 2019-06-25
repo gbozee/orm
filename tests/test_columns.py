@@ -82,7 +82,7 @@ class NewDateTime(datetime.datetime):
 async def test_auto_update():
     # monkeypatch.setattr(datetime, "datetime", NewDateTime)
     async with database:
-        import ipdb; ipdb.set_trace()
+        # import ipdb; ipdb.set_trace()
         result = await Todo.objects.create()
         assert result.created == result.modified
         await result.update(value=2.3)
